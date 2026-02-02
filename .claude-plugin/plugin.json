@@ -1,0 +1,10 @@
+{
+  "name": "kanmd",
+  "description": "Markdown-backed Kanban board for task management in Claude Code",
+  "version": "1.0.0",
+  "author": {
+    "name": "Sam Perrin"
+  },
+  "repository": "https://github.com/samperrin/kanmd",
+  "keywords": ["kanban", "tasks", "markdown", "project-management"]
+}

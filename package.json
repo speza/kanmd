@@ -1,0 +1,50 @@
+{
+  "name": "kanmd",
+  "version": "1.0.0",
+  "description": "Lightweight markdown-backed Kanban CLI",
+  "author": "Sam Perrin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samperrin/kanmd"
+  },
+  "keywords": ["kanban", "cli", "markdown", "tasks", "project-management"],
+  "type": "module",
+  "bin": {
+    "kanmd": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "dev": "bun src/cli.ts",
+    "test": "bun test",
+    "typecheck": "bun x tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.30",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
+  }
+}
