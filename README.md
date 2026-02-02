@@ -9,6 +9,7 @@ An agent-friendly, markdown-backed Kanban CLI for managing tasks.
 - **Plain text storage** - Cards are markdown files with YAML frontmatter, perfect for version control and agent parsing
 - **Simple CLI** - Predictable commands that agents can invoke reliably
 - **No database** - Everything lives in `.kanban/` directory as readable files
+- **Conflict-free collaboration** - One file per card means multiple users or agent sessions can add, move, and edit different cards without merge conflicts
 - **Portable** - Runs anywhere Node.js runs
 
 ## Installation
