@@ -8,6 +8,7 @@ const KANBAN_DIR = path.join(process.cwd(), '.kanban');
 interface Frontmatter {
   priority?: string;
   labels?: string[];
+  dependencies?: string[];
   created?: string;
 }
 
@@ -65,6 +66,15 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
               .map((l) => l.trim())
               .filter(Boolean);
           }
+        } else if (key === 'dependencies') {
+          if (value === '') {
+            frontmatter.dependencies = [];
+          } else {
+            frontmatter.dependencies = value
+              .split(',')
+              .map((d) => d.trim())
+              .filter(Boolean);
+          }
         } else {
           (frontmatter as Record<string, string>)[key] = value;
         }
@@ -84,6 +94,7 @@ export function parseCard(markdown: string, filename: string, column: string): C
     title: '',
     priority: (frontmatter.priority as Card['priority']) || 'medium',
     labels: frontmatter.labels || [],
+    dependencies: frontmatter.dependencies || [],
     created: frontmatter.created || '',
     description: '',
     checklist: [],
@@ -144,6 +155,13 @@ export function serializeCard(card: Partial<Card>): string {
     lines.push(`labels: ${labels.join(', ')}`);
   } else {
     lines.push('labels:');
+  }
+
+  const dependencies = card.dependencies || [];
+  if (dependencies.length > 0) {
+    lines.push(`dependencies: ${dependencies.join(', ')}`);
+  } else {
+    lines.push('dependencies:');
   }
 
   lines.push(`created: ${card.created || new Date().toISOString().split('T')[0]}`);
@@ -282,6 +300,7 @@ export async function addCard(
     title,
     priority,
     labels: [],
+    dependencies: [],
     created: new Date().toISOString().split('T')[0],
     description: '',
     checklist: [],

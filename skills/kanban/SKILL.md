@@ -18,6 +18,9 @@ You have access to `kanmd`, a markdown-backed Kanban CLI. Use it to track tasks 
 | `kanmd move <card-id> <column>` | Move task to another column |
 | `kanmd edit <card-id> [options]` | Update task properties |
 | `kanmd priority <card-id> <level>` | Set priority (high/medium/low) |
+| `kanmd depends <card-id>` | Show task dependencies |
+| `kanmd depends <card-id> add <dep-id>` | Add a dependency |
+| `kanmd depends <card-id> rm <dep-id>` | Remove a dependency |
 | `kanmd delete <card-id>` | Remove a task |
 | `kanmd help` | Show CLI help and examples |
 
@@ -26,7 +29,8 @@ You have access to `kanmd`, a markdown-backed Kanban CLI. Use it to track tasks 
 If arguments are provided (`$ARGUMENTS`), interpret them as a kanmd operation:
 - `/kanban` → show the board
 - `/kanban add todo Fix login bug` → create a task
-- `/kanban move 3 done` → move card 3 to done
+- `/kanban move fix-login-bug done` → move card to done
+- `/kanban depends my-task add setup-db` → add a dependency
 
 ## First-Time Setup
 
@@ -59,6 +63,7 @@ Cards are markdown files with YAML frontmatter in `.kanban/<column>/<id>.md`:
 ---
 priority: high
 labels: bug, auth
+dependencies: setup-database, create-user-model
 created: 2024-01-15
 ---
 
@@ -73,12 +78,20 @@ Users are getting logged out after 5 minutes...
 - [ ] Add tests
 ```
 
+Dependencies are shown with status indicators:
+- **Green**: dependency is done
+- **Yellow**: dependency is in another column (blocks this task)
+- **Red**: dependency card not found
+
+Tasks with unresolved dependencies show `[blocked]` in the board view.
+
 ## Best Practices
 
 1. **Keep titles concise** - Use description for details
 2. **Use priority wisely** - High = blocking, Medium = normal, Low = nice-to-have
 3. **Move cards promptly** - Update status as work progresses
 4. **Use checklists** - Break complex cards into subtasks
+5. **Use dependencies** - Link tasks that must complete before others can start
 
 ## Example Workflow
 
@@ -86,15 +99,19 @@ Users are getting logged out after 5 minutes...
 # Check current state
 kanmd
 
-# Add a task
+# Add tasks
+kanmd add todo "Setup database"
 kanmd add todo "Implement user authentication"
 
+# Add a dependency (auth depends on database)
+kanmd depends implement-user-authentication add setup-database
+
 # Start working on it
-kanmd move 1 in-progress
+kanmd move setup-database in-progress
 
 # Update priority
-kanmd priority 1 high
+kanmd priority setup-database high
 
-# Mark complete
-kanmd move 1 done
+# Mark complete (unblocks dependent tasks)
+kanmd move setup-database done
 ```

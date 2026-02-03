@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { loadBoard, addCard, moveCard, deleteCard, getCard, editCard } from './files.js';
-import type { Card } from './types.js';
+import { loadBoard, addCard, moveCard, deleteCard, editCard } from './files.js';
+import type { Card, Board } from './types.js';
 import { isValidPriority } from './types.js';
 
 const VERSION = '1.0.0';
@@ -39,6 +39,17 @@ function formatColumnName(name: string): string {
     .join(' ');
 }
 
+function hasUnresolvedDependencies(card: Card, board: Board): boolean {
+  if (card.dependencies.length === 0) return false;
+  for (const depId of card.dependencies) {
+    const depCard = board.cards.find((c) => c.id === depId);
+    if (!depCard || depCard.column !== 'done') {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function showBoard(): Promise<void> {
   const board = await loadBoard();
 
@@ -57,8 +68,11 @@ async function showBoard(): Promise<void> {
         const checkProgress = card.checklist.length
           ? ` ${colors.dim}[${card.checklist.filter((c) => c.checked).length}/${card.checklist.length}]${colors.reset}`
           : '';
+        const blocked = hasUnresolvedDependencies(card, board)
+          ? ` ${colors.dim}[blocked]${colors.reset}`
+          : '';
         console.log(
-          `  ${pColor}●${colors.reset} ${card.title}${checkProgress} ${colors.dim}(${card.id})${colors.reset}`
+          `  ${pColor}●${colors.reset} ${card.title}${checkProgress}${blocked} ${colors.dim}(${card.id})${colors.reset}`
         );
       }
     }
@@ -67,7 +81,12 @@ async function showBoard(): Promise<void> {
 }
 
 async function showCard(cardId: string): Promise<void> {
-  const card = await getCard(cardId);
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+
+  if (!card) {
+    throw new Error(`Card "${cardId}" not found`);
+  }
 
   console.log();
   console.log(`${colors.bold}${card.title}${colors.reset}`);
@@ -81,6 +100,20 @@ async function showCard(cardId: string): Promise<void> {
     console.log(
       `Labels:   ${card.labels.map((l) => `${colors.cyan}${l}${colors.reset}`).join(', ')}`
     );
+  }
+
+  if (card.dependencies.length > 0) {
+    const depDisplay = card.dependencies.map((depId) => {
+      const depCard = board.cards.find((c) => c.id === depId);
+      if (!depCard) {
+        return `${colors.red}${depId}${colors.reset}`;
+      } else if (depCard.column === 'done') {
+        return `${colors.green}${depId}${colors.reset}`;
+      } else {
+        return `${colors.yellow}${depId}${colors.reset}`;
+      }
+    });
+    console.log(`Depends:  ${depDisplay.join(', ')}`);
   }
 
   if (card.description) {
@@ -205,6 +238,81 @@ async function handleShow(args: string[]): Promise<void> {
   await showCard(cardId);
 }
 
+async function handleDepends(args: string[]): Promise<void> {
+  const cardId = args[0];
+  if (!cardId) {
+    throw new Error('Usage: kanmd depends <card-id> [add|rm <dep-id>]');
+  }
+
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+  if (!card) {
+    throw new Error(`Card "${cardId}" not found`);
+  }
+
+  const subCommand = args[1];
+
+  if (!subCommand) {
+    // Show dependencies
+    if (card.dependencies.length === 0) {
+      console.log(`${cardId} has no dependencies`);
+    } else {
+      console.log(`${colors.bold}Dependencies for ${cardId}:${colors.reset}`);
+      for (const depId of card.dependencies) {
+        const depCard = board.cards.find((c) => c.id === depId);
+        if (!depCard) {
+          console.log(
+            `  ${colors.red}●${colors.reset} ${depId} ${colors.dim}(not found)${colors.reset}`
+          );
+        } else if (depCard.column === 'done') {
+          console.log(
+            `  ${colors.green}●${colors.reset} ${depId} ${colors.dim}(done)${colors.reset}`
+          );
+        } else {
+          console.log(
+            `  ${colors.yellow}●${colors.reset} ${depId} ${colors.dim}(${depCard.column})${colors.reset}`
+          );
+        }
+      }
+    }
+    return;
+  }
+
+  const depId = args[2];
+  if (!depId) {
+    throw new Error(`Usage: kanmd depends ${cardId} ${subCommand} <dep-id>`);
+  }
+
+  if (subCommand === 'add') {
+    if (depId === cardId) {
+      throw new Error('A card cannot depend on itself');
+    }
+    const depCard = board.cards.find((c) => c.id === depId);
+    if (!depCard) {
+      throw new Error(`Card "${depId}" not found`);
+    }
+    if (card.dependencies.includes(depId)) {
+      throw new Error(`${cardId} already depends on ${depId}`);
+    }
+    const newDeps = [...card.dependencies, depId];
+    await editCard(cardId, { dependencies: newDeps });
+    console.log(
+      `Added dependency: ${colors.green}${cardId}${colors.reset} now depends on ${colors.cyan}${depId}${colors.reset}`
+    );
+  } else if (subCommand === 'rm') {
+    if (!card.dependencies.includes(depId)) {
+      throw new Error(`${cardId} does not depend on ${depId}`);
+    }
+    const newDeps = card.dependencies.filter((d) => d !== depId);
+    await editCard(cardId, { dependencies: newDeps });
+    console.log(
+      `Removed dependency: ${colors.green}${cardId}${colors.reset} no longer depends on ${colors.cyan}${depId}${colors.reset}`
+    );
+  } else {
+    throw new Error(`Unknown subcommand: ${subCommand}. Use 'add' or 'rm'.`);
+  }
+}
+
 function showHelp(): void {
   console.log(`
 ${colors.bold}kanmd${colors.reset} - Markdown-backed Kanban CLI
@@ -217,6 +325,9 @@ ${colors.bold}Usage:${colors.reset}
   kanmd delete <card-id>         Delete a card
   kanmd priority <card-id> <p>   Set priority (high|medium|low)
   kanmd edit <card-id> [options] Edit card fields
+  kanmd depends <card-id>        Show card dependencies
+  kanmd depends <card-id> add <dep-id>  Add a dependency
+  kanmd depends <card-id> rm <dep-id>   Remove a dependency
   kanmd help                     Show this help
   kanmd --version                Show version
 
@@ -231,6 +342,7 @@ ${colors.bold}Examples:${colors.reset}
   kanmd priority build-login-page high
   kanmd edit build-login-page --title "New title" --labels "feature,auth"
   kanmd show build-login-page
+  kanmd depends build-login-page add setup-database
   kanmd delete build-login-page
 `);
 }
@@ -274,6 +386,10 @@ async function main(): Promise<void> {
         break;
       case 'edit':
         await handleEdit(args.slice(1));
+        break;
+      case 'depends':
+      case 'dep':
+        await handleDepends(args.slice(1));
         break;
       case 'help':
       case '--help':
