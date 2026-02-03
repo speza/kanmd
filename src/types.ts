@@ -15,6 +15,7 @@ export interface Card {
   title: string;
   priority: Priority;
   labels: string[];
+  dependencies: string[];
   created: string;
   description: string;
   checklist: ChecklistItem[];

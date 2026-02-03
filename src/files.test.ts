@@ -133,6 +133,29 @@ labels: feature, enhancement, ui
     const result = parseFrontmatter(markdown);
     expect(result.frontmatter.labels).toEqual(['feature', 'enhancement', 'ui']);
   });
+
+  test('parses dependencies correctly', () => {
+    const markdown = `---
+dependencies: task-1, task-2
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.dependencies).toEqual(['task-1', 'task-2']);
+  });
+
+  test('handles empty dependencies correctly', () => {
+    const markdown = `---
+priority: medium
+dependencies:
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.dependencies).toEqual([]);
+  });
 });
 
 describe('parseCard', () => {
@@ -195,9 +218,22 @@ created: 2024-01-15
     const card = parseCard(markdown, 'test.md', 'todo');
     expect(card.priority).toBe('medium');
     expect(card.labels).toEqual([]);
+    expect(card.dependencies).toEqual([]);
     expect(card.created).toBe('');
     expect(card.description).toBe('');
     expect(card.checklist).toEqual([]);
+  });
+
+  test('parses dependencies from frontmatter', () => {
+    const markdown = `---
+priority: high
+dependencies: setup-db, create-model
+---
+
+# My Task`;
+
+    const card = parseCard(markdown, 'my-task.md', 'todo');
+    expect(card.dependencies).toEqual(['setup-db', 'create-model']);
   });
 });
 
@@ -208,6 +244,7 @@ describe('serializeCard', () => {
       title: 'Test Card',
       priority: 'high' as const,
       labels: ['bug', 'urgent'],
+      dependencies: ['task-1', 'task-2'],
       created: '2024-01-15',
       description: 'This is a test description',
       checklist: [
@@ -223,9 +260,29 @@ describe('serializeCard', () => {
     expect(parsed.title).toBe(original.title);
     expect(parsed.priority).toBe(original.priority);
     expect(parsed.labels).toEqual(original.labels);
+    expect(parsed.dependencies).toEqual(original.dependencies);
     expect(parsed.created).toBe(original.created);
     expect(parsed.description).toBe(original.description);
     expect(parsed.checklist).toEqual(original.checklist);
+  });
+
+  test('round-trips empty dependencies', () => {
+    const original = {
+      id: 'test-card',
+      title: 'Test Card',
+      priority: 'medium' as const,
+      labels: [],
+      dependencies: [],
+      created: '2024-01-15',
+      description: '',
+      checklist: [],
+      column: 'todo',
+    };
+
+    const serialized = serializeCard(original);
+    const parsed = parseCard(serialized, 'test-card.md', 'todo');
+
+    expect(parsed.dependencies).toEqual([]);
   });
 
   test('handles empty labels', () => {
