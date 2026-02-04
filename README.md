@@ -25,6 +25,16 @@ yarn global add kanmd
 pnpm add -g kanmd
 ```
 
+## Claude Code Plugin
+
+Install as a Claude Code plugin to use the `/kanmd` skill:
+
+```bash
+/plugin marketplace add git@github.com:speza/kanmd.git
+```
+
+This enables the `/kanmd` skill in Claude Code for managing tasks directly in conversations.
+
 ## Quick Start
 
 ```bash
@@ -54,6 +64,7 @@ kanmd move implement-user-authentication done
 | `kanmd priority <card-id> <high\|medium\|low>` | Set priority |
 | `kanmd edit <card-id> [options]` | Edit card fields |
 | `kanmd delete <card-id>` | Delete a card |
+| `kanmd rank <card-id> <position>` | Set position within priority group |
 | `kanmd help` | Show help and usage examples |
 
 ### Edit Options
@@ -63,6 +74,17 @@ kanmd edit <card-id> --title "New title"
 kanmd edit <card-id> -d "New description"
 kanmd edit <card-id> -l "label1,label2"
 ```
+
+### Ranking
+
+Within each priority level, cards can be manually ordered using the rank command:
+
+```bash
+kanmd rank my-task 1    # Move to first position in priority group
+kanmd rank my-task 3    # Move to third position
+```
+
+Rank is automatically cleared when a card's priority changes or when it moves to a different column.
 
 ## Data Storage
 
