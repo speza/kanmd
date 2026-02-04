@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
+import { createRequire } from 'module';
 import { loadBoard, addCard, moveCard, deleteCard, getCard, editCard, rankCard } from './files.js';
 import type { Card } from './types.js';
 import { isValidPriority } from './types.js';
 
-const VERSION = '1.0.0';
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require('../package.json');
 
 // ANSI colors
 const colors = {
