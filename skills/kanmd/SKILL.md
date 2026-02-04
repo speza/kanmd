@@ -1,5 +1,5 @@
 ---
-name: kanban
+name: kanmd
 description: Manage project tasks using a markdown-backed Kanban board. Use when tracking work items, creating tasks, moving cards between columns, or viewing project status.
 argument-hint: "[command] [args...]"
 ---
@@ -25,17 +25,17 @@ You have access to `kanmd`, a markdown-backed Kanban CLI. Use it to track tasks 
 ## Handling Arguments
 
 If arguments are provided (`$ARGUMENTS`), interpret them as a kanmd operation:
-- `/kanban` → show the board
-- `/kanban add todo Fix login bug` → create a task
-- `/kanban move 3 done` → move card 3 to done
+- `/kanmd` → show the board
+- `/kanmd add todo Fix login bug` → create a task
+- `/kanmd move 3 done` → move card 3 to done
 
 ## First-Time Setup
 
-If no `.kanban/` directory exists, initialize one:
+If no `.kanmd/` directory exists, initialize one:
 
 ```bash
-mkdir -p .kanban/{backlog,todo,in-progress,review,done}
-cat > .kanban/board.yaml << 'EOF'
+mkdir -p .kanmd/{backlog,todo,in-progress,review,done}
+cat > .kanmd/board.yaml << 'EOF'
 columns:
   - backlog
   - todo
@@ -60,11 +60,11 @@ Set `KANMD_DIR` to use a custom board location:
 KANMD_DIR="/path/to/board" kanmd
 ```
 
-Defaults to `.kanban/` in the current directory.
+Defaults to `.kanmd/` in the current directory.
 
 ## Card Format
 
-Cards are markdown files with YAML frontmatter in `.kanban/<column>/<id>.md`:
+Cards are markdown files with YAML frontmatter in `.kanmd/<column>/<id>.md`:
 
 ```markdown
 ---

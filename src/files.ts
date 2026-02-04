@@ -5,7 +5,7 @@ import { KanmdError } from './types.js';
 
 const KANBAN_DIR = process.env.KANMD_DIR
   ? path.resolve(process.env.KANMD_DIR)
-  : path.join(process.cwd(), '.kanban');
+  : path.join(process.cwd(), '.kanmd');
 
 interface Frontmatter {
   priority?: string;
