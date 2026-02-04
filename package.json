@@ -1,6 +1,6 @@
 {
   "name": "kanmd",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightweight markdown-backed Kanban CLI",
   "author": "Sam Perrin",
   "license": "MIT",
@@ -8,7 +8,13 @@
     "type": "git",
     "url": "https://github.com/speza/kanmd"
   },
-  "keywords": ["kanban", "cli", "markdown", "tasks", "project-management"],
+  "keywords": [
+    "kanban",
+    "cli",
+    "markdown",
+    "tasks",
+    "project-management"
+  ],
   "type": "module",
   "bin": {
     "kanmd": "./dist/cli.js"
