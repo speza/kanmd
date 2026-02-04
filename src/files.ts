@@ -3,7 +3,9 @@ import path from 'path';
 import type { Card, Board, Priority } from './types.js';
 import { KanmdError } from './types.js';
 
-const KANBAN_DIR = path.join(process.cwd(), '.kanban');
+const KANBAN_DIR = process.env.KANMD_DIR
+  ? path.resolve(process.env.KANMD_DIR)
+  : path.join(process.cwd(), '.kanban');
 
 interface Frontmatter {
   priority?: string;
