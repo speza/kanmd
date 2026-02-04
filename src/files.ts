@@ -11,6 +11,7 @@ interface Frontmatter {
   priority?: string;
   labels?: string[];
   created?: string;
+  updated?: string;
   rank?: number;
 }
 
@@ -93,6 +94,7 @@ export function parseCard(markdown: string, filename: string, column: string): C
     priority: (frontmatter.priority as Card['priority']) || 'medium',
     labels: frontmatter.labels || [],
     created: frontmatter.created || '',
+    updated: frontmatter.updated,
     description: '',
     checklist: [],
     column,
@@ -155,7 +157,10 @@ export function serializeCard(card: Partial<Card>): string {
     lines.push('labels:');
   }
 
-  lines.push(`created: ${card.created || new Date().toISOString().split('T')[0]}`);
+  lines.push(`created: ${card.created || new Date().toISOString()}`);
+  if (card.updated) {
+    lines.push(`updated: ${card.updated}`);
+  }
   if (card.rank !== undefined) {
     lines.push(`rank: ${card.rank}`);
   }
@@ -294,7 +299,7 @@ export async function addCard(
     title,
     priority,
     labels: [],
-    created: new Date().toISOString().split('T')[0],
+    created: new Date().toISOString(),
     description: '',
     checklist: [],
     column,
@@ -342,7 +347,8 @@ export async function moveCard(cardId: string, toColumn: string): Promise<void> 
   }
 
   // Clear rank when moving to a new column (card sorts to end)
-  const updatedCard = { ...card, rank: undefined };
+  // Set updated timestamp
+  const updatedCard = { ...card, rank: undefined, updated: new Date().toISOString() };
   const fromPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
   const toPath = path.join(KANBAN_DIR, toColumn, `${cardId}.md`);
 
@@ -405,7 +411,7 @@ export async function editCard(cardId: string, updates: Partial<Card>): Promise<
     throw new KanmdError(`Card "${cardId}" not found`, 'CARD_NOT_FOUND');
   }
 
-  const updatedCard = { ...card, ...updates };
+  const updatedCard = { ...card, ...updates, updated: new Date().toISOString() };
   const cardPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
   assertPathWithinBase(cardPath, KANBAN_DIR);
 
@@ -465,7 +471,7 @@ export async function rankCard(cardId: string, newPosition: number): Promise<voi
       const cardPath = path.join(KANBAN_DIR, c.column, `${c.id}.md`);
       assertPathWithinBase(cardPath, KANBAN_DIR);
 
-      const updatedCard = { ...c, rank: newRank };
+      const updatedCard = { ...c, rank: newRank, updated: new Date().toISOString() };
       updates.push({
         cardPath,
         tempPath: cardPath + '.tmp',

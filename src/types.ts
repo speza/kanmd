@@ -16,6 +16,7 @@ export interface Card {
   priority: Priority;
   labels: string[];
   created: string;
+  updated?: string;
   description: string;
   checklist: ChecklistItem[];
   column: string;
