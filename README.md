@@ -2,6 +2,8 @@
 
 An agent-friendly, markdown-backed Kanban CLI for managing tasks.
 
+![kanmd board example](public/todo_list_1.png)
+
 ## Why kanmd?
 
 **Built for AI agents and humans alike.** kanmd stores tasks as plain markdown files that are easy for both humans and AI agents to read, create, and modify. The simple CLI makes it ideal for automated workflows and agentic task management.
