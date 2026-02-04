@@ -9,6 +9,7 @@ interface Frontmatter {
   priority?: string;
   labels?: string[];
   created?: string;
+  rank?: number;
 }
 
 /**
@@ -65,6 +66,11 @@ export function parseFrontmatter(markdown: string): { frontmatter: Frontmatter; 
               .map((l) => l.trim())
               .filter(Boolean);
           }
+        } else if (key === 'rank') {
+          const parsed = parseInt(value, 10);
+          if (!isNaN(parsed)) {
+            frontmatter.rank = parsed;
+          }
         } else {
           (frontmatter as Record<string, string>)[key] = value;
         }
@@ -88,6 +94,7 @@ export function parseCard(markdown: string, filename: string, column: string): C
     description: '',
     checklist: [],
     column,
+    rank: frontmatter.rank,
   };
 
   let section = 'header';
@@ -147,6 +154,9 @@ export function serializeCard(card: Partial<Card>): string {
   }
 
   lines.push(`created: ${card.created || new Date().toISOString().split('T')[0]}`);
+  if (card.rank !== undefined) {
+    lines.push(`rank: ${card.rank}`);
+  }
   lines.push('---');
   lines.push('');
   lines.push(`# ${card.title || 'Untitled'}`);
@@ -329,6 +339,8 @@ export async function moveCard(cardId: string, toColumn: string): Promise<void> 
     throw new KanmdError(`Card is already in "${toColumn}"`, 'ALREADY_IN_COLUMN');
   }
 
+  // Clear rank when moving to a new column (card sorts to end)
+  const updatedCard = { ...card, rank: undefined };
   const fromPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
   const toPath = path.join(KANBAN_DIR, toColumn, `${cardId}.md`);
 
@@ -336,7 +348,20 @@ export async function moveCard(cardId: string, toColumn: string): Promise<void> 
   assertPathWithinBase(fromPath, KANBAN_DIR);
   assertPathWithinBase(toPath, KANBAN_DIR);
 
-  await fs.rename(fromPath, toPath);
+  // Write updated card (without rank) to new location, then delete old file
+  // Use 'wx' flag to fail if target already exists (e.g., from a previous failed move)
+  try {
+    await fs.writeFile(toPath, serializeCard(updatedCard), { flag: 'wx' });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+      throw new KanmdError(
+        `Card "${cardId}" already exists in ${toColumn}. Remove the duplicate first.`,
+        'CARD_EXISTS'
+      );
+    }
+    throw err;
+  }
+  await fs.unlink(fromPath);
 }
 
 export async function deleteCard(cardId: string): Promise<void> {
@@ -386,4 +411,74 @@ export async function editCard(cardId: string, updates: Partial<Card>): Promise<
   const tempPath = cardPath + '.tmp';
   await fs.writeFile(tempPath, serializeCard(updatedCard));
   await fs.rename(tempPath, cardPath);
+}
+
+export async function rankCard(cardId: string, newPosition: number): Promise<void> {
+  validatePathComponent(cardId);
+
+  if (newPosition < 1) {
+    throw new KanmdError('Position must be 1 or greater', 'INVALID_POSITION');
+  }
+
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+
+  if (!card) {
+    throw new KanmdError(`Card "${cardId}" not found`, 'CARD_NOT_FOUND');
+  }
+
+  // Get all cards in the same column and priority group
+  const groupCards = board.cards.filter(
+    (c) => c.column === card.column && c.priority === card.priority
+  );
+
+  // Sort the group by current rank (unranked cards go to the end)
+  groupCards.sort((a, b) => {
+    const aRank = a.rank ?? Number.MAX_SAFE_INTEGER;
+    const bRank = b.rank ?? Number.MAX_SAFE_INTEGER;
+    if (aRank !== bRank) return aRank - bRank;
+    return a.created.localeCompare(b.created);
+  });
+
+  // Remove the target card from its current position
+  const cardIndex = groupCards.findIndex((c) => c.id === cardId);
+  if (cardIndex !== -1) {
+    groupCards.splice(cardIndex, 1);
+  }
+
+  // Insert at new position (1-indexed, so position 1 = index 0)
+  const insertIndex = Math.min(newPosition - 1, groupCards.length);
+  groupCards.splice(insertIndex, 0, card);
+
+  // Renumber all cards in the group (1, 2, 3, ...)
+  // Collect updates first, write to temp files, then rename all (reduces inconsistency window)
+  const updates: Array<{ cardPath: string; tempPath: string; content: string }> = [];
+
+  for (let i = 0; i < groupCards.length; i++) {
+    const c = groupCards[i];
+    const newRank = i + 1;
+
+    // Only update cards whose rank actually changed
+    if (c.rank !== newRank) {
+      const cardPath = path.join(KANBAN_DIR, c.column, `${c.id}.md`);
+      assertPathWithinBase(cardPath, KANBAN_DIR);
+
+      const updatedCard = { ...c, rank: newRank };
+      updates.push({
+        cardPath,
+        tempPath: cardPath + '.tmp',
+        content: serializeCard(updatedCard),
+      });
+    }
+  }
+
+  // Phase 1: Write all temp files
+  for (const update of updates) {
+    await fs.writeFile(update.tempPath, update.content);
+  }
+
+  // Phase 2: Rename all temp files to final (atomic per-file)
+  for (const update of updates) {
+    await fs.rename(update.tempPath, update.cardPath);
+  }
 }

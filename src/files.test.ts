@@ -12,6 +12,7 @@ import {
   deleteCard,
   editCard,
   getCard,
+  rankCard,
 } from './files.js';
 import { KanmdError } from './types.js';
 
@@ -133,6 +134,43 @@ labels: feature, enhancement, ui
     const result = parseFrontmatter(markdown);
     expect(result.frontmatter.labels).toEqual(['feature', 'enhancement', 'ui']);
   });
+
+  test('parses rank from frontmatter', () => {
+    const markdown = `---
+priority: high
+labels:
+created: 2024-01-15
+rank: 3
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.rank).toBe(3);
+  });
+
+  test('handles missing rank', () => {
+    const markdown = `---
+priority: medium
+labels:
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.rank).toBeUndefined();
+  });
+
+  test('handles invalid rank value', () => {
+    const markdown = `---
+rank: not-a-number
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.rank).toBeUndefined();
+  });
 });
 
 describe('parseCard', () => {
@@ -198,6 +236,21 @@ created: 2024-01-15
     expect(card.created).toBe('');
     expect(card.description).toBe('');
     expect(card.checklist).toEqual([]);
+    expect(card.rank).toBeUndefined();
+  });
+
+  test('parses rank from card', () => {
+    const markdown = `---
+priority: high
+labels:
+created: 2024-01-15
+rank: 2
+---
+
+# My Card`;
+
+    const card = parseCard(markdown, 'my-card.md', 'todo');
+    expect(card.rank).toBe(2);
   });
 });
 
@@ -251,6 +304,52 @@ describe('serializeCard', () => {
     expect(serialized).toContain('priority: medium');
     expect(serialized).not.toContain('## Description');
     expect(serialized).not.toContain('## Checklist');
+    expect(serialized).not.toContain('rank:');
+  });
+
+  test('serializes rank when present', () => {
+    const card = {
+      title: 'Ranked Card',
+      priority: 'high' as const,
+      labels: [],
+      created: '2024-01-15',
+      rank: 5,
+    };
+
+    const serialized = serializeCard(card);
+    expect(serialized).toContain('rank: 5');
+  });
+
+  test('does not serialize rank when undefined', () => {
+    const card = {
+      title: 'Unranked Card',
+      priority: 'medium' as const,
+      labels: [],
+      created: '2024-01-15',
+      rank: undefined,
+    };
+
+    const serialized = serializeCard(card);
+    expect(serialized).not.toContain('rank:');
+  });
+
+  test('round-trips card with rank correctly', () => {
+    const original = {
+      id: 'ranked-card',
+      title: 'Ranked Card',
+      priority: 'high' as const,
+      labels: [],
+      created: '2024-01-15',
+      description: '',
+      checklist: [],
+      column: 'todo',
+      rank: 3,
+    };
+
+    const serialized = serializeCard(original);
+    const parsed = parseCard(serialized, 'ranked-card.md', 'todo');
+
+    expect(parsed.rank).toBe(3);
   });
 });
 
@@ -421,5 +520,145 @@ describe('loadBoard', () => {
     const board = await loadBoard();
     expect(board.cards).toHaveLength(3);
     expect(board.cards.map((c) => c.id).sort()).toEqual(['task-1', 'task-2', 'task-3']);
+  });
+});
+
+describe('rankCard', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('ranks a single card', async () => {
+    await addCard('todo', 'Task A');
+    await rankCard('task-a', 1);
+
+    const card = await getCard('task-a');
+    expect(card.rank).toBe(1);
+  });
+
+  test('moves card to first position', async () => {
+    await addCard('todo', 'Task A');
+    await addCard('todo', 'Task B');
+    await addCard('todo', 'Task C');
+
+    // Rank Task C to position 1
+    await rankCard('task-c', 1);
+
+    const board = await loadBoard();
+    const todoCards = board.cards.filter((c) => c.column === 'todo');
+
+    const cardA = todoCards.find((c) => c.id === 'task-a');
+    const cardB = todoCards.find((c) => c.id === 'task-b');
+    const cardC = todoCards.find((c) => c.id === 'task-c');
+
+    expect(cardC?.rank).toBe(1);
+    expect(cardA?.rank).toBe(2);
+    expect(cardB?.rank).toBe(3);
+  });
+
+  test('moves card to middle position', async () => {
+    await addCard('todo', 'Task A');
+    await addCard('todo', 'Task B');
+    await addCard('todo', 'Task C');
+
+    // First rank them all
+    await rankCard('task-a', 1);
+    await rankCard('task-b', 2);
+    await rankCard('task-c', 3);
+
+    // Now move C to position 2
+    await rankCard('task-c', 2);
+
+    const board = await loadBoard();
+    const todoCards = board.cards.filter((c) => c.column === 'todo');
+
+    const cardA = todoCards.find((c) => c.id === 'task-a');
+    const cardB = todoCards.find((c) => c.id === 'task-b');
+    const cardC = todoCards.find((c) => c.id === 'task-c');
+
+    expect(cardA?.rank).toBe(1);
+    expect(cardC?.rank).toBe(2);
+    expect(cardB?.rank).toBe(3);
+  });
+
+  test('handles position beyond card count', async () => {
+    await addCard('todo', 'Task A');
+    await addCard('todo', 'Task B');
+
+    // Rank to position 10 (should end up at position 2)
+    await rankCard('task-a', 10);
+
+    const board = await loadBoard();
+    const cardA = board.cards.find((c) => c.id === 'task-a');
+    const cardB = board.cards.find((c) => c.id === 'task-b');
+
+    expect(cardB?.rank).toBe(1);
+    expect(cardA?.rank).toBe(2);
+  });
+
+  test('rejects invalid position', async () => {
+    await addCard('todo', 'Task A');
+    await expect(rankCard('task-a', 0)).rejects.toThrow('Position must be 1 or greater');
+    await expect(rankCard('task-a', -1)).rejects.toThrow('Position must be 1 or greater');
+  });
+
+  test('rejects nonexistent card', async () => {
+    await expect(rankCard('nonexistent', 1)).rejects.toThrow('not found');
+  });
+
+  test('only ranks cards in same priority group', async () => {
+    await addCard('todo', 'High Task', 'high');
+    await addCard('todo', 'Medium Task', 'medium');
+
+    await rankCard('high-task', 1);
+    await rankCard('medium-task', 1);
+
+    const board = await loadBoard();
+    const highTask = board.cards.find((c) => c.id === 'high-task');
+    const mediumTask = board.cards.find((c) => c.id === 'medium-task');
+
+    // Each should be rank 1 in their own priority group
+    expect(highTask?.rank).toBe(1);
+    expect(mediumTask?.rank).toBe(1);
+  });
+});
+
+describe('moveCard clears rank', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('clears rank when moving to different column', async () => {
+    await addCard('todo', 'Task A');
+    await rankCard('task-a', 1);
+
+    // Verify rank is set
+    let card = await getCard('task-a');
+    expect(card.rank).toBe(1);
+
+    // Move to different column
+    await moveCard('task-a', 'in-progress');
+
+    // Rank should be cleared
+    card = await getCard('task-a');
+    expect(card.rank).toBeUndefined();
+  });
+});
+
+describe('editCard clears rank on priority change', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('can clear rank via editCard', async () => {
+    await addCard('todo', 'Task A');
+    await rankCard('task-a', 1);
+
+    // Verify rank is set
+    let card = await getCard('task-a');
+    expect(card.rank).toBe(1);
+
+    // Clear rank by setting to undefined
+    await editCard('task-a', { rank: undefined });
+
+    card = await getCard('task-a');
+    expect(card.rank).toBeUndefined();
   });
 });
