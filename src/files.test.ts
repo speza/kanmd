@@ -91,6 +91,33 @@ created: 2024-01-15
     expect(result.content).toBe('# Title');
   });
 
+  test('parses full ISO timestamp for created', () => {
+    const markdown = `---
+priority: high
+labels:
+created: 2024-01-15T10:30:00.000Z
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.created).toBe('2024-01-15T10:30:00.000Z');
+  });
+
+  test('parses updated timestamp', () => {
+    const markdown = `---
+priority: medium
+labels:
+created: 2024-01-15T10:30:00.000Z
+updated: 2024-01-16T14:45:00.000Z
+---
+
+# Title`;
+
+    const result = parseFrontmatter(markdown);
+    expect(result.frontmatter.updated).toBe('2024-01-16T14:45:00.000Z');
+  });
+
   test('handles empty frontmatter', () => {
     const markdown = `---
 ---
@@ -234,9 +261,24 @@ created: 2024-01-15
     expect(card.priority).toBe('medium');
     expect(card.labels).toEqual([]);
     expect(card.created).toBe('');
+    expect(card.updated).toBeUndefined();
     expect(card.description).toBe('');
     expect(card.checklist).toEqual([]);
     expect(card.rank).toBeUndefined();
+  });
+
+  test('parses updated timestamp', () => {
+    const markdown = `---
+priority: medium
+labels:
+created: 2024-01-15T10:30:00.000Z
+updated: 2024-01-16T14:45:00.000Z
+---
+
+# My Card`;
+
+    const card = parseCard(markdown, 'my-card.md', 'todo');
+    expect(card.updated).toBe('2024-01-16T14:45:00.000Z');
   });
 
   test('parses rank from card', () => {
@@ -331,6 +373,43 @@ describe('serializeCard', () => {
 
     const serialized = serializeCard(card);
     expect(serialized).not.toContain('rank:');
+  });
+
+  test('serializes updated timestamp when present', () => {
+    const card = {
+      title: 'Updated Card',
+      priority: 'medium' as const,
+      labels: [],
+      created: '2024-01-15T10:30:00.000Z',
+      updated: '2024-01-16T14:45:00.000Z',
+    };
+
+    const serialized = serializeCard(card);
+    expect(serialized).toContain('updated: 2024-01-16T14:45:00.000Z');
+  });
+
+  test('does not serialize updated when undefined', () => {
+    const card = {
+      title: 'New Card',
+      priority: 'medium' as const,
+      labels: [],
+      created: '2024-01-15T10:30:00.000Z',
+    };
+
+    const serialized = serializeCard(card);
+    expect(serialized).not.toContain('updated:');
+  });
+
+  test('generates full ISO timestamp for created when not provided', () => {
+    const card = {
+      title: 'New Card',
+    };
+
+    const serialized = serializeCard(card);
+    // Should contain a full ISO timestamp (with T and Z)
+    const createdMatch = serialized.match(/created: (.+)/);
+    expect(createdMatch).toBeTruthy();
+    expect(createdMatch![1]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   test('round-trips card with rank correctly', () => {
@@ -660,5 +739,59 @@ describe('editCard clears rank on priority change', () => {
 
     card = await getCard('task-a');
     expect(card.rank).toBeUndefined();
+  });
+});
+
+describe('timestamp behavior', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('addCard creates full ISO timestamp', async () => {
+    const card = await addCard('todo', 'New Task');
+    // Should be full ISO timestamp format
+    expect(card.created).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  test('editCard sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+
+    // Initially no updated timestamp
+    let card = await getCard('task-a');
+    expect(card.updated).toBeUndefined();
+
+    await editCard('task-a', { title: 'Updated Title' });
+
+    card = await getCard('task-a');
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  test('moveCard sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+
+    // Initially no updated timestamp
+    let card = await getCard('task-a');
+    expect(card.updated).toBeUndefined();
+
+    await moveCard('task-a', 'in-progress');
+
+    card = await getCard('task-a');
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  test('rankCard sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+    await addCard('todo', 'Task B');
+
+    // Initially no updated timestamp
+    let card = await getCard('task-a');
+    expect(card.updated).toBeUndefined();
+
+    await rankCard('task-a', 1);
+
+    card = await getCard('task-a');
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 });

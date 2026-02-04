@@ -82,6 +82,9 @@ async function showCard(cardId: string): Promise<void> {
   console.log(`Column:   ${formatColumnName(card.column)}`);
   console.log(`Priority: ${priorityColors[card.priority]}${card.priority}${colors.reset}`);
   console.log(`Created:  ${card.created}`);
+  if (card.updated) {
+    console.log(`Updated:  ${card.updated}`);
+  }
 
   if (card.labels.length > 0) {
     console.log(
