@@ -19,6 +19,7 @@ You have access to `kanmd`, a markdown-backed Kanban CLI. Use it to track tasks 
 | `kanmd edit <card-id> [options]` | Update task properties |
 | `kanmd priority <card-id> <level>` | Set priority (high/medium/low) |
 | `kanmd delete <card-id>` | Remove a task |
+| `kanmd rank <card-id> <pos>` | Set position within priority group |
 | `kanmd help` | Show CLI help and examples |
 
 ## Handling Arguments
@@ -50,6 +51,16 @@ EOF
 - **Starting complex work**: Break it into cards, move them as you progress
 - **Session handoff**: Leave incomplete work as cards for the next session
 - **User asks about status**: Show the board
+
+## Configuration
+
+Set `KANMD_DIR` to use a custom board location:
+
+```bash
+KANMD_DIR="/path/to/board" kanmd
+```
+
+Defaults to `.kanban/` in the current directory.
 
 ## Card Format
 
@@ -90,11 +101,14 @@ kanmd
 kanmd add todo "Implement user authentication"
 
 # Start working on it
-kanmd move 1 in-progress
+kanmd move implement-user-authentication in-progress
 
 # Update priority
-kanmd priority 1 high
+kanmd priority implement-user-authentication high
+
+# Reorder within priority group (move to position 1)
+kanmd rank implement-user-authentication 1
 
 # Mark complete
-kanmd move 1 done
+kanmd move implement-user-authentication done
 ```
