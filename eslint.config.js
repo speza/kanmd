@@ -4,7 +4,7 @@ import tsparser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['node_modules/', 'dist/', '.kanban/'],
+    ignores: ['node_modules/', 'dist/', '.kanmd/'],
   },
   {
     files: ['src/**/*.ts'],

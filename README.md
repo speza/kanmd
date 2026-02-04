@@ -8,7 +8,7 @@ An agent-friendly, markdown-backed Kanban CLI for managing tasks.
 
 - **Plain text storage** - Cards are markdown files with YAML frontmatter, perfect for version control and agent parsing
 - **Simple CLI** - Predictable commands that agents can invoke reliably
-- **No database** - Everything lives in `.kanban/` directory as readable files
+- **No database** - Everything lives in `.kanmd/` directory as readable files
 - **Conflict-free collaboration** - One file per card means multiple users or agent sessions can add, move, and edit different cards without merge conflicts
 - **Portable** - Runs anywhere Node.js runs
 
@@ -28,7 +28,7 @@ pnpm add -g kanmd
 ## Quick Start
 
 ```bash
-# Initialize a board (creates .kanban/ directory)
+# Initialize a board (creates .kanmd/ directory)
 kanmd
 
 # Add tasks
@@ -66,10 +66,10 @@ kanmd edit <card-id> -l "label1,label2"
 
 ## Data Storage
 
-All data is stored in a `.kanban/` directory:
+All data is stored in a `.kanmd/` directory:
 
 ```
-.kanban/
+.kanmd/
 ├── board.yaml           # Board configuration
 ├── todo/
 │   └── my-task.md       # Card as markdown
@@ -117,7 +117,7 @@ columns:
 
 kanmd is designed for use with AI coding agents. The plain-text format means agents can:
 
-- Read `.kanban/` files directly to understand project status
+- Read `.kanmd/` files directly to understand project status
 - Use the CLI to create and manage tasks programmatically
 - Parse card markdown to extract requirements and checklists
 - Track progress through version control diffs
