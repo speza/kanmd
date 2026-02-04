@@ -5,6 +5,6 @@
   "author": {
     "name": "Sam Perrin"
   },
-  "repository": "https://github.com/samperrin/kanmd",
+  "repository": "https://github.com/speza/kanmd",
   "keywords": ["kanban", "tasks", "markdown", "project-management"]
 }

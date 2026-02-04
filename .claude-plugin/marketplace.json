@@ -1,0 +1,16 @@
+{
+  "name": "kanmd",
+  "owner": {
+    "name": "Sam Perrin"
+  },
+  "metadata": {
+    "description": "Markdown-backed Kanban board plugin for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "kanmd",
+      "source": "./plugins/kanmd",
+      "description": "Markdown-backed Kanban board for task management in Claude Code"
+    }
+  ]
+}
