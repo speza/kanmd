@@ -19,6 +19,7 @@ export interface Card {
   description: string;
   checklist: ChecklistItem[];
   column: string;
+  rank?: number;
 }
 
 export interface Board {

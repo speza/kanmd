@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { loadBoard, addCard, moveCard, deleteCard, getCard, editCard } from './files.js';
+import { loadBoard, addCard, moveCard, deleteCard, getCard, editCard, rankCard } from './files.js';
 import type { Card } from './types.js';
 import { isValidPriority } from './types.js';
 
@@ -25,9 +25,15 @@ const priorityColors: Record<Card['priority'], string> = {
 
 function sortCards(cards: Card[]): Card[] {
   const priorityOrder: Record<Card['priority'], number> = { high: 0, medium: 1, low: 2 };
-  return cards.sort((a, b) => {
-    const diff = priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (diff !== 0) return diff;
+  return [...cards].sort((a, b) => {
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const aRank = a.rank ?? Number.MAX_SAFE_INTEGER;
+    const bRank = b.rank ?? Number.MAX_SAFE_INTEGER;
+    const rankDiff = aRank - bRank;
+    if (rankDiff !== 0) return rankDiff;
+
     return a.created.localeCompare(b.created);
   });
 }
@@ -148,8 +154,25 @@ async function handlePriority(args: string[]): Promise<void> {
     throw new Error(`Invalid priority "${priority}". Must be: high, medium, or low`);
   }
 
-  await editCard(cardId, { priority });
+  // Clear rank when priority changes (card moves to different priority group)
+  await editCard(cardId, { priority, rank: undefined });
   console.log(`Set ${cardId} priority to ${priorityColors[priority]}${priority}${colors.reset}`);
+}
+
+async function handleRank(args: string[]): Promise<void> {
+  const [cardId, positionStr] = args;
+
+  if (!cardId || !positionStr) {
+    throw new Error('Usage: kanmd rank <card-id> <position>');
+  }
+
+  const position = parseInt(positionStr, 10);
+  if (isNaN(position) || position < 1) {
+    throw new Error('Position must be a positive integer');
+  }
+
+  await rankCard(cardId, position);
+  console.log(`Moved ${colors.green}${cardId}${colors.reset} to position ${position}`);
 }
 
 async function handleEdit(args: string[]): Promise<void> {
@@ -216,6 +239,7 @@ ${colors.bold}Usage:${colors.reset}
   kanmd move <card-id> <column>  Move a card
   kanmd delete <card-id>         Delete a card
   kanmd priority <card-id> <p>   Set priority (high|medium|low)
+  kanmd rank <card-id> <pos>     Set position within priority group
   kanmd edit <card-id> [options] Edit card fields
   kanmd help                     Show this help
   kanmd --version                Show version
@@ -229,6 +253,7 @@ ${colors.bold}Examples:${colors.reset}
   kanmd add todo "Build login page"
   kanmd move build-login-page in-progress
   kanmd priority build-login-page high
+  kanmd rank build-login-page 1
   kanmd edit build-login-page --title "New title" --labels "feature,auth"
   kanmd show build-login-page
   kanmd delete build-login-page
@@ -271,6 +296,9 @@ async function main(): Promise<void> {
       case 'priority':
       case 'pri':
         await handlePriority(args.slice(1));
+        break;
+      case 'rank':
+        await handleRank(args.slice(1));
         break;
       case 'edit':
         await handleEdit(args.slice(1));
