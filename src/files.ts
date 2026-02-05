@@ -7,6 +7,10 @@ const KANBAN_DIR = process.env.KANMD_DIR
   ? path.resolve(process.env.KANMD_DIR)
   : path.join(process.cwd(), '.kanmd');
 
+export function getKanbanDir(): string {
+  return KANBAN_DIR;
+}
+
 interface Frontmatter {
   priority?: string;
   labels?: string[];

@@ -1,7 +1,17 @@
 #!/usr/bin/env node
 
 import { createRequire } from 'module';
-import { loadBoard, addCard, moveCard, deleteCard, getCard, editCard, rankCard } from './files.js';
+import {
+  loadBoard,
+  addCard,
+  moveCard,
+  deleteCard,
+  getCard,
+  editCard,
+  rankCard,
+  getKanbanDir,
+} from './files.js';
+import { watchBoard } from './watch.js';
 import type { Card } from './types.js';
 import { isValidPriority } from './types.js';
 
@@ -233,6 +243,10 @@ async function handleShow(args: string[]): Promise<void> {
   await showCard(cardId);
 }
 
+async function handleWatch(): Promise<void> {
+  await watchBoard(getKanbanDir(), showBoard);
+}
+
 function showHelp(): void {
   console.log(`
 ${colors.bold}kanmd${colors.reset} - Markdown-backed Kanban CLI
@@ -246,6 +260,7 @@ ${colors.bold}Usage:${colors.reset}
   kanmd priority <card-id> <p>   Set priority (high|medium|low)
   kanmd rank <card-id> <pos>     Set position within priority group
   kanmd edit <card-id> [options] Edit card fields
+  kanmd watch                    Watch board for changes
   kanmd help                     Show this help
   kanmd --version                Show version
 
@@ -307,6 +322,10 @@ async function main(): Promise<void> {
         break;
       case 'edit':
         await handleEdit(args.slice(1));
+        break;
+      case 'watch':
+      case 'tail':
+        await handleWatch();
         break;
       case 'help':
       case '--help':
