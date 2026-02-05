@@ -1,0 +1,6 @@
+name: Project Board
+columns:
+  - todo
+  - in-progress
+  - review
+  - done
