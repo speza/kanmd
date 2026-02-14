@@ -19,7 +19,7 @@ import {
 } from './files.js';
 import { KanmdError } from './types.js';
 
-const KANBAN_DIR = path.join(process.cwd(), '.kanmd');
+const KANBAN_DIR = process.env.KANMD_DIR!;
 
 // Helper to set up test kanban directory
 async function setupTestBoard(): Promise<void> {
