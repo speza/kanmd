@@ -67,6 +67,9 @@ kanmd move implement-user-authentication done
 | `kanmd edit <card-id> [options]` | Edit card fields |
 | `kanmd delete <card-id>` | Delete a card |
 | `kanmd rank <card-id> <position>` | Set position within priority group |
+| `kanmd checklist add <card-id> <text>` | Add a checklist item |
+| `kanmd checklist toggle <card-id> <index>` | Toggle checklist item |
+| `kanmd checklist remove <card-id> <index>` | Remove checklist item |
 | `kanmd help` | Show help and usage examples |
 
 ### Edit Options
@@ -76,6 +79,19 @@ kanmd edit <card-id> --title "New title"
 kanmd edit <card-id> -d "New description"
 kanmd edit <card-id> -l "label1,label2"
 ```
+
+### Checklist Management
+
+Manage subtasks on cards with dedicated commands:
+
+```bash
+kanmd checklist add my-task "Write unit tests"
+kanmd checklist add my-task "Update documentation"
+kanmd checklist toggle my-task 1    # Toggle item 1 checked/unchecked
+kanmd checklist remove my-task 2    # Remove item 2
+```
+
+Checklist indices are 1-based. The `cl` alias is also supported (`kanmd cl add ...`).
 
 ### Ranking
 
@@ -87,6 +103,23 @@ kanmd rank my-task 3    # Move to third position
 ```
 
 Rank is automatically cleared when a card's priority changes or when it moves to a different column.
+
+### JSON Output
+
+Append `--json` to any command for machine-readable output:
+
+```bash
+kanmd --json                         # Board state as JSON
+kanmd show my-task --json            # Card details as JSON
+kanmd add todo "New task" --json     # Returns created card as JSON
+kanmd checklist add my-task "Item" --json  # Returns updated card as JSON
+```
+
+Errors in JSON mode include structured error codes:
+
+```json
+{"error": "Card \"nonexistent\" not found", "code": "CARD_NOT_FOUND"}
+```
 
 ## Data Storage
 
@@ -139,23 +172,32 @@ columns:
 
 ## Agent Integration
 
-kanmd is designed for use with AI coding agents. The plain-text format means agents can:
+kanmd is designed for use with AI coding agents. Use `--json` for reliable, machine-parseable output:
 
-- Read `.kanmd/` files directly to understand project status
-- Use the CLI to create and manage tasks programmatically
-- Parse card markdown to extract requirements and checklists
-- Track progress through version control diffs
+- **Structured output** - `--json` flag on every command returns parseable JSON instead of formatted text
+- **Structured errors** - JSON errors include `code` fields for programmatic handling
+- **Checklist management** - Agents can add, toggle, and remove subtask items via CLI
+- **Plain text storage** - Cards are markdown files agents can also read directly
+- **Conflict-free** - One file per card means parallel agent sessions won't conflict
 
 Example agent workflow:
 ```bash
 # Agent checks current tasks
-kanmd
+kanmd --json
 
 # Agent creates a task for work it will do
-kanmd add in-progress "Refactor authentication module"
+kanmd add in-progress "Refactor authentication module" --json
+
+# Agent breaks work into subtasks
+kanmd checklist add refactor-authentication-module "Extract auth middleware" --json
+kanmd checklist add refactor-authentication-module "Update route handlers" --json
+kanmd checklist add refactor-authentication-module "Add integration tests" --json
+
+# Agent completes subtasks
+kanmd checklist toggle refactor-authentication-module 1 --json
 
 # Agent completes work and moves task
-kanmd move refactor-authentication-module done
+kanmd move refactor-authentication-module done --json
 ```
 
 ## Development

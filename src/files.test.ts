@@ -13,6 +13,9 @@ import {
   editCard,
   getCard,
   rankCard,
+  checklistAdd,
+  checklistToggle,
+  checklistRemove,
 } from './files.js';
 import { KanmdError } from './types.js';
 
@@ -791,6 +794,180 @@ describe('timestamp behavior', () => {
     await rankCard('task-a', 1);
 
     card = await getCard('task-a');
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+});
+
+describe('checklistAdd', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('adds item to empty checklist', async () => {
+    await addCard('todo', 'Task A');
+    const card = await checklistAdd('task-a', 'First item');
+
+    expect(card.checklist).toHaveLength(1);
+    expect(card.checklist[0]).toEqual({ text: 'First item', checked: false });
+  });
+
+  test('appends item to existing checklist', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'First item');
+    const card = await checklistAdd('task-a', 'Second item');
+
+    expect(card.checklist).toHaveLength(2);
+    expect(card.checklist[0].text).toBe('First item');
+    expect(card.checklist[1].text).toBe('Second item');
+  });
+
+  test('persists to disk', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Persisted item');
+
+    const card = await getCard('task-a');
+    expect(card.checklist).toHaveLength(1);
+    expect(card.checklist[0].text).toBe('Persisted item');
+  });
+
+  test('sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+    const card = await checklistAdd('task-a', 'New item');
+
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  test('rejects nonexistent card', async () => {
+    await expect(checklistAdd('nonexistent', 'Item')).rejects.toThrow('not found');
+  });
+
+  test('rejects invalid card ID', async () => {
+    await expect(checklistAdd('../etc', 'Item')).rejects.toThrow(KanmdError);
+  });
+});
+
+describe('checklistToggle', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('toggles unchecked item to checked', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Toggle me');
+
+    const card = await checklistToggle('task-a', 1);
+    expect(card.checklist[0].checked).toBe(true);
+  });
+
+  test('toggles checked item to unchecked', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Toggle me');
+    await checklistToggle('task-a', 1);
+
+    const card = await checklistToggle('task-a', 1);
+    expect(card.checklist[0].checked).toBe(false);
+  });
+
+  test('persists to disk', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Check me');
+    await checklistToggle('task-a', 1);
+
+    const card = await getCard('task-a');
+    expect(card.checklist[0].checked).toBe(true);
+  });
+
+  test('rejects index out of range (too high)', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Only item');
+
+    await expect(checklistToggle('task-a', 2)).rejects.toThrow('out of range');
+  });
+
+  test('rejects index out of range (zero)', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Only item');
+
+    await expect(checklistToggle('task-a', 0)).rejects.toThrow('out of range');
+  });
+
+  test('rejects nonexistent card', async () => {
+    await expect(checklistToggle('nonexistent', 1)).rejects.toThrow('not found');
+  });
+
+  test('sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Item');
+    const card = await checklistToggle('task-a', 1);
+
+    expect(card.updated).toBeTruthy();
+    expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+});
+
+describe('checklistRemove', () => {
+  beforeEach(setupTestBoard);
+  afterEach(cleanupTestBoard);
+
+  test('removes item by index', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'First');
+    await checklistAdd('task-a', 'Second');
+    await checklistAdd('task-a', 'Third');
+
+    const card = await checklistRemove('task-a', 2);
+    expect(card.checklist).toHaveLength(2);
+    expect(card.checklist[0].text).toBe('First');
+    expect(card.checklist[1].text).toBe('Third');
+  });
+
+  test('removes first item', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'First');
+    await checklistAdd('task-a', 'Second');
+
+    const card = await checklistRemove('task-a', 1);
+    expect(card.checklist).toHaveLength(1);
+    expect(card.checklist[0].text).toBe('Second');
+  });
+
+  test('removes last item', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'First');
+    await checklistAdd('task-a', 'Second');
+
+    const card = await checklistRemove('task-a', 2);
+    expect(card.checklist).toHaveLength(1);
+    expect(card.checklist[0].text).toBe('First');
+  });
+
+  test('persists to disk', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Keep');
+    await checklistAdd('task-a', 'Remove');
+    await checklistRemove('task-a', 2);
+
+    const card = await getCard('task-a');
+    expect(card.checklist).toHaveLength(1);
+    expect(card.checklist[0].text).toBe('Keep');
+  });
+
+  test('rejects index out of range', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Only item');
+
+    await expect(checklistRemove('task-a', 2)).rejects.toThrow('out of range');
+  });
+
+  test('rejects nonexistent card', async () => {
+    await expect(checklistRemove('nonexistent', 1)).rejects.toThrow('not found');
+  });
+
+  test('sets updated timestamp', async () => {
+    await addCard('todo', 'Task A');
+    await checklistAdd('task-a', 'Item');
+    const card = await checklistRemove('task-a', 1);
+
     expect(card.updated).toBeTruthy();
     expect(card.updated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
