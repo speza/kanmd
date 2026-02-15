@@ -1,6 +1,6 @@
 {
   "name": "kanmd",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lightweight markdown-backed Kanban CLI",
   "author": "Sam Perrin",
   "license": "MIT",
