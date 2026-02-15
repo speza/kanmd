@@ -425,6 +425,86 @@ export async function editCard(cardId: string, updates: Partial<Card>): Promise<
   await fs.rename(tempPath, cardPath);
 }
 
+export async function checklistAdd(cardId: string, text: string): Promise<Card> {
+  validatePathComponent(cardId);
+
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+
+  if (!card) {
+    throw new KanmdError(`Card "${cardId}" not found`, 'CARD_NOT_FOUND');
+  }
+
+  card.checklist.push({ text, checked: false });
+  const updatedCard = { ...card, updated: new Date().toISOString() };
+  const cardPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
+  assertPathWithinBase(cardPath, KANBAN_DIR);
+
+  const tempPath = cardPath + '.tmp';
+  await fs.writeFile(tempPath, serializeCard(updatedCard));
+  await fs.rename(tempPath, cardPath);
+
+  return { ...updatedCard, checklist: card.checklist };
+}
+
+export async function checklistToggle(cardId: string, index: number): Promise<Card> {
+  validatePathComponent(cardId);
+
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+
+  if (!card) {
+    throw new KanmdError(`Card "${cardId}" not found`, 'CARD_NOT_FOUND');
+  }
+
+  if (index < 1 || index > card.checklist.length) {
+    throw new KanmdError(
+      `Index ${index} out of range. Card has ${card.checklist.length} checklist item(s).`,
+      'INVALID_INDEX'
+    );
+  }
+
+  card.checklist[index - 1].checked = !card.checklist[index - 1].checked;
+  const updatedCard = { ...card, updated: new Date().toISOString() };
+  const cardPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
+  assertPathWithinBase(cardPath, KANBAN_DIR);
+
+  const tempPath = cardPath + '.tmp';
+  await fs.writeFile(tempPath, serializeCard(updatedCard));
+  await fs.rename(tempPath, cardPath);
+
+  return { ...updatedCard, checklist: card.checklist };
+}
+
+export async function checklistRemove(cardId: string, index: number): Promise<Card> {
+  validatePathComponent(cardId);
+
+  const board = await loadBoard();
+  const card = board.cards.find((c) => c.id === cardId);
+
+  if (!card) {
+    throw new KanmdError(`Card "${cardId}" not found`, 'CARD_NOT_FOUND');
+  }
+
+  if (index < 1 || index > card.checklist.length) {
+    throw new KanmdError(
+      `Index ${index} out of range. Card has ${card.checklist.length} checklist item(s).`,
+      'INVALID_INDEX'
+    );
+  }
+
+  card.checklist.splice(index - 1, 1);
+  const updatedCard = { ...card, updated: new Date().toISOString() };
+  const cardPath = path.join(KANBAN_DIR, card.column, `${cardId}.md`);
+  assertPathWithinBase(cardPath, KANBAN_DIR);
+
+  const tempPath = cardPath + '.tmp';
+  await fs.writeFile(tempPath, serializeCard(updatedCard));
+  await fs.rename(tempPath, cardPath);
+
+  return { ...updatedCard, checklist: card.checklist };
+}
+
 export async function rankCard(cardId: string, newPosition: number): Promise<void> {
   validatePathComponent(cardId);
 
